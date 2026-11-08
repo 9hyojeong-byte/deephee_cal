@@ -1,4 +1,4 @@
-const CACHE_NAME = 'deephee-v1';
+const CACHE_NAME = 'deephee-v2';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

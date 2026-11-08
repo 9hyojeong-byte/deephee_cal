@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, X, Download, RefreshCw, KeyRound, Instagram } from 'lucide-react';
+import { Plus, X, Download, RefreshCw, KeyRound } from 'lucide-react';
 import { ScheduleEvent } from './types';
 import CalendarView from './components/CalendarView';
 import EventListView from './components/EventListView';
@@ -16,7 +16,7 @@ import {
 } from './lib/supabaseApi';
 import { getAuthorName, isCrossPosted } from './lib/authors';
 import { hashPassword } from './lib/passwordHash';
-import { ADMIN_PASSWORD_HASH, INSTAGRAM_URL, CROSS_POST_ATTENDEE } from './lib/appConfig';
+import { ADMIN_PASSWORD_HASH, CONTACT_URL, CROSS_POST_ATTENDEE } from './lib/appConfig';
 
 const ADMIN_MODE_STORAGE_KEY = 'isAdminMode';
 
@@ -492,18 +492,17 @@ export default function App() {
             <span className="whitespace-nowrap">
               <span className="underline decoration-peach decoration-[6px] underline-offset-[6px] [text-decoration-skip-ink:none]">양희선</span> 강사
             </span>{' '}
-            {/* "수업캘린더"와 아이콘을 한 덩어리로 묶어, 줄이 접혀도 아이콘이 홀로 떨어지지 않게 한다 */}
+            {/* "수업캘린더"와 문의하기 버튼을 한 덩어리로 묶어, 줄이 접혀도 버튼이 홀로 떨어지지 않게 한다 */}
             <span className="whitespace-nowrap">
               <span className="text-peach-deep text-[30px]">수업캘린더</span>
               <a
-                href={INSTAGRAM_URL}
+                href={CONTACT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex align-middle ml-3 -mt-1.5 w-9 h-9 rounded-full bg-white/70 shadow-soft text-ink hover:bg-peach/50 items-center justify-center press"
-                title="인스타그램"
-                aria-label="인스타그램 열기"
+                className="inline-flex align-middle ml-3 -mt-1.5 px-3.5 py-1.5 rounded-full bg-white/70 shadow-soft text-ink text-sm font-normal tracking-normal leading-none hover:bg-peach/50 items-center press"
+                title="카카오톡으로 문의하기"
               >
-                <Instagram className="w-[18px] h-[18px]" strokeWidth={1.75} />
+                문의하기
               </a>
             </span>
           </h1>

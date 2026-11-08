@@ -14,8 +14,8 @@ export const AUTHOR_NAME = '우파루파';
 // 프갤 캘린더(dcfdg_cal)에도 함께 노출된다. 프갤 쪽 supabaseApi.ts의 값과 같아야 한다.
 export const CROSS_POST_ATTENDEE = '깍뚜기벙';
 
-// 제목 옆 인스타그램 아이콘이 여는 주소
-export const INSTAGRAM_URL = 'https://www.instagram.com/the_deephee/';
+// 제목 옆 "문의하기" 버튼이 여는 카카오톡 오픈채팅 주소
+export const CONTACT_URL = 'http://qr.kakao.com/talk/MkzXW0EF7tz54cp1Wyj7wtYyZA4-';
 
 // 공유 텍스트 머리말: "📅 [희선캘린더]"
 export const SHARE_LABEL = APP_NAME;

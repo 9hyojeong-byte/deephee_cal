@@ -1,3 +1,4 @@
+import { CROSS_POST_ATTENDEE } from './appConfig';
 // 참석자(attendees)는 콤마로 구분된 문자열로 저장되고, 그 첫 번째 항목이 작성자다.
 // 이 순서가 실제 작성자와 항상 일치하려면 두 가지가 보장되어야 한다:
 //   1. supabaseApi.fetchSchedules()가 schedule_attendees를 등록 순서(created_at)대로
@@ -18,9 +19,14 @@ export function getAuthorName(attendees: string | null | undefined): string | nu
 }
 
 // 이 앱은 작성자를 화면에 보여주지 않는다 (작성자는 항상 AUTHOR_NAME).
-// 화면 표시·인원수에는 작성자를 뺀 실제 참석자만 쓴다.
+// 화면 표시·인원수에는 작성자와 프다갤 표식 참석자를 뺀 실제 참석자만 쓴다.
 export function getParticipantsList(attendees: string | null | undefined): string[] {
   const list = getAttendeesList(attendees);
   const author = list[0];
-  return list.filter((n) => n !== author);
+  return list.filter((n) => n !== author && n !== CROSS_POST_ATTENDEE);
+}
+
+// "프다갤에도 올리기"로 프갤 캘린더에도 노출되는 일정인지
+export function isCrossPosted(attendees: string | null | undefined): boolean {
+  return getAttendeesList(attendees).includes(CROSS_POST_ATTENDEE);
 }

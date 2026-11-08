@@ -4,8 +4,9 @@ import { ScheduleEvent, CLASS_TYPES, ClassType } from '../types';
 import { normalizeToHourLabel } from '../lib/timeUtils';
 import { LOCATION_COLORS } from '../lib/locationColors';
 import { CLASS_TYPE_TONES } from '../lib/classTypes';
-import { getAuthorName } from '../lib/authors';
-import { AUTHOR_NAME } from '../lib/appConfig';
+import { getAuthorName, getAttendeesList, isCrossPosted } from '../lib/authors';
+import { AUTHOR_NAME, CROSS_POST_ATTENDEE } from '../lib/appConfig';
+import { buildEntryMemo, isAutoEntryMemo } from '../lib/locationSessions';
 
 interface EventFormProps {
   selectedDate: string;
@@ -72,9 +73,12 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
   const [hour, setHour] = useState('12시');
   const [deepTankUsage, setDeepTankUsage] = useState<string | null>(null);
   const [description, setDescription] = useState('');
+  // "프다갤에도 올리기": 켜면 제목 입력칸을 보여주고, 저장 시 CROSS_POST_ATTENDEE를 참석자로 넣어 프갤 캘린더에도 노출한다.
+  const [crossPost, setCrossPost] = useState(false);
 
   useEffect(() => {
     if (editingEvent) {
+      setCrossPost(isCrossPosted(editingEvent.attendees));
       setTitle(editingEvent.title);
       setIsTitleUserModified(true); // 기존 수정 건은 유저 수정 상태로 유지
       setDate(editingEvent.date);
@@ -117,6 +121,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
       setIsAllDay(false); setSession('1부'); setHour('12시'); setDeepTankUsage(null); setDescription('');
       setAuthor(AUTHOR_NAME);
       setClassType(null);
+      setCrossPost(false);
       setIsTitleUserModified(false);
 
       // 새 일정 초기 자동 제목 설정
@@ -125,22 +130,16 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
   }, [editingEvent, selectedDate]);
 
   const handleDeepTankClick = (option: string) => {
-    if (deepTankUsage === option) {
-      setDeepTankUsage(null);
-      if (description === '30분 빠른입장' || description === '30분 늦은입장') {
-        setDescription('');
-      }
-    } else {
-      setDeepTankUsage(option);
-      if (!description.trim() || description === '30분 빠른입장' || description === '30분 늦은입장') {
-        if (option === '전반부이') {
-          setDescription('30분 빠른입장');
-        } else if (option === '후반부이') {
-          setDescription('30분 늦은입장');
-        }
-      }
-    }
+    setDeepTankUsage(deepTankUsage === option ? null : option);
   };
+
+  // 풀장/날짜/부/딥탱크 이용시간이 바뀌면 메모에 입장 시각 자동 입력 ("10:30 입장 (2부 11:00~14:00 · 딥탱크 전반)").
+  // 메모가 비어 있거나 자동 문구일 때만 바꾸고, 직접 쓴 메모는 건드리지 않는다.
+  // 시간표가 없는 풀장(성남, 수원)이나 하루 종일이면 자동 문구만 지운다.
+  useEffect(() => {
+    const autoMemo = isAllDay ? null : buildEntryMemo(location, session, deepTankUsage, date);
+    setDescription((prev) => (isAutoEntryMemo(prev) ? autoMemo ?? '' : prev));
+  }, [location, session, deepTankUsage, date, isAllDay]);
 
   // 작성자/장소/시간/딥탱크 이용시간 변경 시 제목 자동 연결 ("작성자명/장소/시간/전반/빠입")
   useEffect(() => {
@@ -152,7 +151,10 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !date) { alert('일정 제목과 날짜는 필수입니다.'); return; }
+    // 제목 칸이 숨겨져 있을 때(프다갤 미노출) 비어 있으면 자동 제목을 쓴다.
+    const finalTitle = title.trim()
+      || (crossPost ? '' : buildAutoTitle(author, location, session, hour, deepTankUsage, isAllDay));
+    if (!finalTitle || !date) { alert('일정 제목과 날짜는 필수입니다.'); return; }
     if (endDate && endDate < date) {
       alert('종료 날짜는 시작 날짜보다 빠를 수 없습니다.');
       return;
@@ -160,9 +162,13 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
     // 자유일정은 수업이 아니므로 수업 종류를 받지 않는다.
     if (location !== '자유일정' && !classType) { alert('수업 종류를 선택해 주세요.'); return; }
 
-    // 수정할 때는 참석자 명단을 그대로 둔다 (작성자를 바꿀 일이 없음).
-    // 새 일정은 작성자 AUTHOR_NAME 한 명으로 시작한다.
-    const combinedAttendees: string | null = editingEvent ? (editingEvent.attendees ?? null) : AUTHOR_NAME;
+    // 수정할 때는 참석자 명단을 그대로 두고, 프다갤 표식 참석자만 체크 상태에 맞춰 넣고 뺀다.
+    // 새 일정은 작성자 AUTHOR_NAME 한 명(+ 체크 시 표식 참석자)으로 시작한다.
+    // DB의 참석자 행은 App.handleSaveEvent가 한 행씩 맞춘다.
+    const baseList = editingEvent ? getAttendeesList(editingEvent.attendees) : [AUTHOR_NAME];
+    const withoutMarker = baseList.filter((n) => n !== CROSS_POST_ATTENDEE);
+    const nextList = crossPost ? [...withoutMarker, CROSS_POST_ATTENDEE] : withoutMarker;
+    const combinedAttendees: string | null = nextList.length > 0 ? nextList.join(', ') : null;
 
     let finalStartTime: string | null = null;
     if (!isAllDay) {
@@ -177,7 +183,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
     onSave({
       ...editingEvent,
       id: editingEvent?.id || crypto.randomUUID(),
-      title: title.trim(),
+      title: finalTitle,
       date,
       endDate: endDate && endDate !== date ? endDate : null,
       startTime: finalStartTime,
@@ -300,9 +306,6 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
                     } else {
                       setHour('12시');
                       setDeepTankUsage(null); // 성남, 수원, 자유일정 선택 시 딥탱크 사용시간 초기화
-                      if (description === '30분 빠른입장' || description === '30분 늦은입장') {
-                        setDescription('');
-                      }
                     }
                     if (loc !== '자유일정') {
                       setEndDate(date);
@@ -425,10 +428,25 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
             </div>
           )}
 
-          {/* 5. Title */}
-          <div className="space-y-2">
+          {/* 5. 프다갤에도 올리기 (체크 시에만 제목 입력칸 노출) */}
+          <label className="flex items-center gap-3 py-3.5 px-5 bg-white rounded-full border border-line cursor-pointer">
+            <input
+              type="checkbox"
+              checked={crossPost}
+              onChange={(e) => setCrossPost(e.target.checked)}
+              className="w-5 h-5 accent-[#F2918A] cursor-pointer"
+            />
+            <span className="text-[15px] text-ink">프다갤에도 올리기</span>
+          </label>
+
+          {/* 6. Title (프다갤에 노출될 때만 보여준다) */}
+          {crossPost && (
+          <div className="space-y-2 animate-fade-up">
             <div className="flex items-center justify-between">
-              <label className={labelCls}>일정 제목</label>
+              <label className={labelCls}>
+                일정 제목
+                <span className="text-xs text-muted/80">(프다갤 캘린더에서만 보여짐)</span>
+              </label>
               {isTitleUserModified && !editingEvent && (
                 <button
                   type="button"
@@ -451,8 +469,9 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
               className={inputCls}
             />
           </div>
+          )}
 
-          {/* 6. Description */}
+          {/* 7. Description */}
           <div className="space-y-2">
             <label className={labelCls}>
               <AlignLeft className="w-4 h-4" strokeWidth={1.75} />메모
@@ -466,7 +485,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
             />
           </div>
 
-          {/* 7. Action Buttons */}
+          {/* 8. Action Buttons */}
           <div className="flex items-center gap-2.5 pt-1">
             <button
               type="button"

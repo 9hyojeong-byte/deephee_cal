@@ -10,6 +10,10 @@ export const APP_NAME = '희선캘린더';
 // 새 일정의 작성자(=첫 참석자)로 항상 들어가는 이름. 화면에는 표시하지 않는다.
 export const AUTHOR_NAME = '우파루파';
 
+// "프다갤에도 올리기"로 등록한 일정에 붙는 표식 참석자. 이 참석자가 있는 일정은
+// 프갤 캘린더(dcfdg_cal)에도 함께 노출된다. 프갤 쪽 supabaseApi.ts의 값과 같아야 한다.
+export const CROSS_POST_ATTENDEE = '깍뚜기벙';
+
 // 제목 옆 인스타그램 아이콘이 여는 주소
 export const INSTAGRAM_URL = 'https://www.instagram.com/the_deephee/';
 

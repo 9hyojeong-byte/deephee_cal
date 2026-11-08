@@ -14,9 +14,9 @@ import {
   getAttendeePasswordHash,
   updateSharedMemo,
 } from './lib/supabaseApi';
-import { getAuthorName } from './lib/authors';
+import { getAuthorName, isCrossPosted } from './lib/authors';
 import { hashPassword } from './lib/passwordHash';
-import { ADMIN_PASSWORD_HASH, INSTAGRAM_URL } from './lib/appConfig';
+import { ADMIN_PASSWORD_HASH, INSTAGRAM_URL, CROSS_POST_ATTENDEE } from './lib/appConfig';
 
 const ADMIN_MODE_STORAGE_KEY = 'isAdminMode';
 
@@ -256,6 +256,20 @@ export default function App() {
     setEditingEvent(null);
 
     await saveEventFields(savedEvent, { isNew });
+
+    // "프다갤에도 올리기" 체크 상태가 바뀌었으면 표식 참석자 행 하나만 넣거나 뺀다.
+    // 새 일정은 saveSingleEvent가 작성자를 먼저 넣은 뒤에 추가되므로 작성자 순서가 유지된다.
+    const wasCrossPosted = !isNew && isCrossPosted(existingEvent?.attendees);
+    const nowCrossPosted = isCrossPosted(savedEvent.attendees);
+    if (wasCrossPosted !== nowCrossPosted) {
+      try {
+        if (nowCrossPosted) await addAttendee(savedEvent.id, CROSS_POST_ATTENDEE);
+        else await removeAttendee(savedEvent.id, CROSS_POST_ATTENDEE);
+      } catch (err) {
+        console.error('Failed to sync 프다갤 cross-post marker:', err);
+        setSyncStatus('error');
+      }
+    }
 
     // 기존 일정을 수정한 경우, 작성자명이 바뀌었으면 그 참석자 행 하나만
     // 동기화한다 (다른 참석자는 손대지 않음).

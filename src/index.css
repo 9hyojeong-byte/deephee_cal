@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/* ── Design tokens: "Digital Wellness" ── */
+@theme {
+  --color-paper: #FDFCF8;      /* primary background */
+  --color-sage: #E8EFE8;
+  --color-lavender: #EFEDF4;
+  --color-peach: #FFB7B2;      /* primary accent */
+  --color-ink: #292524;        /* soft-black text */
+  --color-muted: #78716C;      /* secondary text */
+
+  /* Deeper companions for text/icons that must stay legible on the pastels */
+  --color-sage-deep: #5E7A63;
+  --color-lavender-deep: #6E6591;
+  --color-peach-deep: #C7615A;
+  --color-line: #ECE9E2;
+
+  --font-sans: 'Jua', -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --font-hand: 'Reenie Beanie', cursive;
+
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-soft-lg: 0 12px 40px -6px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Base ── */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  /* Jua는 굵기가 하나뿐이라, font-medium/semibold에서 브라우저가 가짜 볼드를
+     만들어 글자가 뭉개지지 않도록 막는다. */
+  font-synthesis-weight: none;
+}
+
+/* Reenie Beanie is a thin hand: a touch larger than the surrounding text reads right */
+.font-hand {
+  font-family: var(--font-hand);
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+/* ── Paper grain overlay (35% fractal noise) ── */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.16 0 0 0 0 0.15 0 0 0 0 0.14 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Floating background blobs ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  animation: float 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Reveal on scroll (see useReveal) ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Gentle press feedback for pill buttons ── */
+.press {
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.press:active { transform: scale(0.96); }
+
+/* ── Input focus ── */
+.input-soft {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-soft:focus {
+  outline: none;
+  border-color: var(--color-peach);
+  box-shadow: 0 0 0 4px rgba(255, 183, 178, 0.25);
+}
+
+/* ── Overlays ── */
+@keyframes fade-up {
+  0%   { transform: translateY(12px); opacity: 0; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
+@keyframes sheet-up {
+  0%   { transform: translateY(40px); opacity: 0; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
+.animate-fade-up  { animation: fade-up 0.4s ease both; }
+.animate-sheet-up { animation: sheet-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-float    { animation: float 6s ease-in-out infinite; }
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .blob, .animate-float, .animate-fade-up, .animate-sheet-up {
+    animation: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .press:active { transform: none; }
+}

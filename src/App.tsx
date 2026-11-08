@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, X, Download, Search, RefreshCw, KeyRound, Instagram } from 'lucide-react';
+import { Plus, X, Download, RefreshCw, KeyRound, Instagram } from 'lucide-react';
 import { ScheduleEvent } from './types';
 import CalendarView from './components/CalendarView';
 import EventListView from './components/EventListView';
@@ -48,9 +48,6 @@ export default function App() {
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(new Date());
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchVal, setSearchVal] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null);
@@ -395,18 +392,6 @@ export default function App() {
     });
   };
 
-  const handleSearch = () => {
-    setSearchQuery(searchVal);
-    if (searchVal.trim()) {
-      localStorage.setItem('lastSearchAttendee', searchVal.trim());
-    }
-  };
-
-  const handleClearSearch = () => {
-    setSearchVal('');
-    setSearchQuery('');
-  };
-
   // 강력 새로고침: SW 등록 해제 + 캐시 전부 삭제 후 페이지를 다시 불러와
   // 완전히 새 상태로 시작한다.
   const [isHardRefreshing, setIsHardRefreshing] = useState(false);
@@ -447,11 +432,6 @@ export default function App() {
     if (selectedLocation && (!e.location || !e.location.trim().includes(selectedLocation))) {
       return false;
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const atts = e.attendees ? e.attendees.toLowerCase() : '';
-      if (!atts.includes(q)) return false;
-    }
     return true;
   });
 
@@ -483,23 +463,6 @@ export default function App() {
                 aria-label="강력 새로고침"
               >
                 <RefreshCw className={`w-4 h-4 ${isHardRefreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
-              </button>
-
-              <button
-                onClick={() => {
-                  const nextSearchOpen = !isSearchOpen;
-                  setIsSearchOpen(nextSearchOpen);
-                  if (nextSearchOpen) {
-                    setSearchVal(localStorage.getItem('lastSearchAttendee') || '');
-                  } else {
-                    handleClearSearch();
-                  }
-                }}
-                className={`${iconButton} ${isSearchOpen ? '!bg-ink !text-paper' : ''}`}
-                title="참석자 검색"
-                aria-label="참석자 검색"
-              >
-                <Search className="w-4 h-4" strokeWidth={2} />
               </button>
 
               <button
@@ -563,39 +526,6 @@ export default function App() {
           </div>
           )}
 
-          {/* ── Search Input Row ── */}
-          {isSearchOpen && (
-            <div className="relative mt-4 flex gap-2 animate-fade-up">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSearch();
-                  }}
-                  placeholder="참석자 이름으로 찾기"
-                  className="w-full pl-10 pr-4 py-3 rounded-full border border-line bg-white/80 text-sm text-ink input-soft placeholder:text-muted/70"
-                  autoFocus
-                />
-                <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
-              </div>
-              <button
-                onClick={handleSearch}
-                className="px-5 py-3 rounded-full bg-ink text-paper text-sm font-medium press cursor-pointer"
-              >
-                검색
-              </button>
-              {searchQuery && (
-                <button
-                  onClick={handleClearSearch}
-                  className="px-4 py-3 rounded-full bg-white/80 text-muted text-sm font-medium press cursor-pointer border border-line"
-                >
-                  초기화
-                </button>
-              )}
-            </div>
-          )}
         </header>
 
         {/* ── Scrollable Content ── */}
@@ -619,7 +549,6 @@ export default function App() {
             onAddEventClick={openNewEventForm}
             onEventClick={handleOpenEventDetail}
             onSelectDate={setSelectedDate}
-            searchQuery={searchQuery}
           />
         </main>
 

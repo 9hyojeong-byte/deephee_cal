@@ -488,13 +488,13 @@ export default function App() {
             </div>
           </div>
 
-          <h1 className="mt-3 text-[38px] font-semibold tracking-tight leading-[1.35] text-ink">
+          <h1 className="mt-3 text-[30px] font-semibold tracking-tight leading-[1.35] text-ink">
             <span className="whitespace-nowrap">
-              <span className="underline decoration-peach decoration-[6px] underline-offset-[6px] [text-decoration-skip-ink:none]">양희선</span> 강사
+              <span className="underline decoration-peach decoration-[5px] underline-offset-[5px] [text-decoration-skip-ink:none]">양희선</span> 강사
             </span>{' '}
             {/* "수업캘린더"와 문의하기 버튼을 한 덩어리로 묶어, 줄이 접혀도 버튼이 홀로 떨어지지 않게 한다 */}
             <span className="whitespace-nowrap">
-              <span className="text-peach-deep text-[30px]">수업캘린더</span>
+              <span className="text-peach-deep text-[24px]">수업캘린더</span>
               <a
                 href={CONTACT_URL}
                 target="_blank"

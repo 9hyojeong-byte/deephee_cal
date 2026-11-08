@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { ScheduleEvent } from '../types';
 import { isPastDate } from '../lib/timeUtils';
-import { getDotColorClass, LOCATION_COLORS } from '../lib/locationColors';
+import { getDotColorClass, LOCATION_COLORS, HIDDEN_LOCATIONS } from '../lib/locationColors';
 import { useReveal } from '../lib/useReveal';
 
 type WeekStart = 'sun' | 'mon';
@@ -255,7 +255,7 @@ export default function CalendarView({
         ref={legendRef}
         className="mt-5 pt-4 border-t border-line flex flex-wrap items-center justify-center gap-1.5"
       >
-        {Object.entries(LOCATION_COLORS).map(([name, colors]) => {
+        {Object.entries(LOCATION_COLORS).filter(([name]) => !HIDDEN_LOCATIONS.includes(name)).map(([name, colors]) => {
           const isActive = selectedLocation === name;
           const isAnyActive = selectedLocation !== null;
           return (

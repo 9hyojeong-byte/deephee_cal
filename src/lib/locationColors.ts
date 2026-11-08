@@ -44,6 +44,10 @@ export const LOCATION_COLORS = {
 
 export type LocationKey = keyof typeof LOCATION_COLORS;
 
+// 홈 화면 장소 목록에서 숨기는 장소. 희선강사는 파라다이브를 이용하지 않는다.
+// 색상은 남겨둬서 혹시 남아 있는 파라 일정의 점 색은 그대로 보인다.
+export const HIDDEN_LOCATIONS: readonly string[] = ['파라'];
+
 function findLocationKey(location: string | null | undefined): LocationKey | null {
   if (!location) return null;
   const trimmed = location.trim();

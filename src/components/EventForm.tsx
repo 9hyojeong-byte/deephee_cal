@@ -15,7 +15,8 @@ interface EventFormProps {
   onCancel: () => void;
 }
 
-const LOCATIONS = ['딥스', '성남', '파라', '수원', '자유일정'] as const;
+// 장소 버튼 목록. 희선강사는 파라다이브를 이용하지 않아서 '파라'는 넣지 않는다.
+const LOCATIONS = ['딥스', '성남', '수원', '자유일정'] as const;
 type LocationType = typeof LOCATIONS[number];
 const SESSIONS = ['1부', '2부', '3부', '4부', '5부'] as const;
 const HOURS = Array.from({ length: 24 }, (_, i) => `${i}시`);
@@ -43,10 +44,10 @@ function buildAutoTitle(
   }
   parts.push(loc);
 
-  const timeStr = allDay ? '하루종일' : (loc === '딥스' || loc === '파라' ? sess : hr);
+  const timeStr = allDay ? '하루종일' : (loc === '딥스' ? sess : hr);
   parts.push(timeStr);
 
-  if (!allDay && (loc === '딥스' || loc === '파라') && deepTank) {
+  if (!allDay && loc === '딥스' && deepTank) {
     if (deepTank === '전반부이' || deepTank === '전반') {
       parts.push('전반');
       parts.push('빠입');
@@ -95,7 +96,6 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
       } else {
         const fullText = `${editingEvent.title} ${editingEvent.description || ''}`;
         if (fullText.includes('성남')) detLocation = '성남';
-        else if (fullText.includes('파라')) detLocation = '파라';
         else if (fullText.includes('수원')) detLocation = '수원';
         else if (fullText.includes('자유일정')) detLocation = '자유일정';
       }
@@ -107,7 +107,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
       setIsAllDay(isDayAll);
       if (!isDayAll && editingEvent.startTime) {
         const raw = editingEvent.startTime;
-        if (detLocation === '딥스' || detLocation === '파라') {
+        if (detLocation === '딥스') {
           setSession(SESSIONS.includes(raw as any) ? raw : '1부');
         } else {
           setHour(normalizeToHourLabel(raw));
@@ -172,7 +172,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
 
     let finalStartTime: string | null = null;
     if (!isAllDay) {
-      if (location === '딥스' || location === '파라') {
+      if (location === '딥스') {
         finalStartTime = session;
       } else {
         const hNum = parseInt(hour.replace('시', ''), 10);
@@ -188,7 +188,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
       endDate: endDate && endDate !== date ? endDate : null,
       startTime: finalStartTime,
       endTime: editingEvent ? editingEvent.endTime : null,
-      deepTankUsage: (location === '딥스' || location === '파라') ? (deepTankUsage || null) : null,
+      deepTankUsage: location === '딥스' ? (deepTankUsage || null) : null,
       description: description.trim() || null,
       location,
       classType: location === '자유일정' ? null : classType,
@@ -301,7 +301,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
                     const isLeavingFreeSchedule = loc !== '자유일정' && location === '자유일정';
 
                     setLocation(loc);
-                    if (loc === '딥스' || loc === '파라') {
+                    if (loc === '딥스') {
                       setSession('1부');
                     } else {
                       setHour('12시');
@@ -336,7 +336,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
           {!isAllDay && (
             <div className="space-y-4">
               <div className="space-y-2">
-                {location === '딥스' || location === '파라' ? (
+                {location === '딥스' ? (
                   <>
                     <label className={labelCls}>시간 (부 선택)</label>
                     <div className="grid grid-cols-5 gap-1.5">
@@ -369,8 +369,8 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
                 )}
               </div>
 
-              {/* 딥탱크 이용시간 (전반부이 / 후반부이) - 딥스 또는 파라 일때만 표시 */}
-              {(location === '딥스' || location === '파라') && (
+              {/* 딥탱크 이용시간 (전반부이 / 후반부이) - 딥스 일때만 표시 */}
+              {location === '딥스' && (
                 <div className="space-y-3 bg-lavender p-5 rounded-[2rem] animate-fade-up">
                   <div className="flex items-center justify-between">
                     <label className="text-sm text-lavender-deep flex items-center gap-1.5">

@@ -1,4 +1,4 @@
-import { ScheduleEvent } from '../types';
+import { ScheduleEvent, PERSONAL_SCHEDULE } from '../types';
 import { formatTime } from './timeUtils';
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
@@ -26,5 +26,7 @@ export function getEventTimeLabel(ev: ScheduleEvent): string {
 // 이 앱은 일정 제목(=작성자명이 들어간 자동 제목)을 화면에 보여주지 않으므로,
 // 일정을 가리켜야 할 때는 날짜·수업 종류·장소·시간으로 부른다. 예: "10월 24일 (토) · 머메이드 · 딥스 · 2부"
 export function describeEvent(ev: ScheduleEvent): string {
-  return [formatKoreanDate(ev.date, true), ev.classType, ev.location || '일반', getEventTimeLabel(ev)].filter(Boolean).join(' · ');
+  // 개인일정은 장소 칸에도 '개인일정'이 들어 있으므로 장소를 한 번 더 붙이지 않는다.
+  const locationLabel = ev.classType === PERSONAL_SCHEDULE ? null : ev.location || '일반';
+  return [formatKoreanDate(ev.date, true), ev.classType, locationLabel, getEventTimeLabel(ev)].filter(Boolean).join(' · ');
 }

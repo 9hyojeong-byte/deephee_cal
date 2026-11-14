@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Edit2, Trash2, Plus, MoreHorizontal, CalendarDays, Link } from 'lucide-react';
-import { ScheduleEvent } from '../types';
+import { ScheduleEvent, PERSONAL_SCHEDULE } from '../types';
 import { isPastDate } from '../lib/timeUtils';
 import { getParticipantsList } from '../lib/authors';
 import { linkifyText } from '../lib/linkify';
@@ -119,7 +119,9 @@ ${ev.classType ? `• 수업: ${ev.classType}\n` : ''}• 메모: ${ev.descripti
                 </span>
               )}
               <span className="text-base font-medium text-ink leading-snug align-middle mr-1.5">
-                {participants.length > 0 ? `참석 ${participants.length}명` : '참석자 모집 중'}
+                {ev.classType === PERSONAL_SCHEDULE
+                  ? '개인일정공지'
+                  : participants.length > 0 ? `참석 ${participants.length}명` : '참석자 모집 중'}
               </span>
               {!isPast && isNewSchedule(ev.createdAt) && (
                 <span className="font-hand text-xl text-peach-deep align-middle -rotate-3 inline-block">new!</span>

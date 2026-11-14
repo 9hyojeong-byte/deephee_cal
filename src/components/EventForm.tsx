@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, AlignLeft, Check, MapPin, Waves, Sparkles } from 'lucide-react';
-import { ScheduleEvent, CLASS_TYPES, ClassType } from '../types';
+import { ScheduleEvent, CLASS_TYPES, ClassType, PERSONAL_SCHEDULE } from '../types';
 import { normalizeToHourLabel } from '../lib/timeUtils';
 import { LOCATION_COLORS } from '../lib/locationColors';
 import { CLASS_TYPE_TONES } from '../lib/classTypes';
@@ -76,6 +76,12 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
   const [description, setDescription] = useState('');
   // "프다갤에도 올리기": 켜면 제목 입력칸을 보여주고, 저장 시 CROSS_POST_ATTENDEE를 참석자로 넣어 프갤 캘린더에도 노출한다.
   const [crossPost, setCrossPost] = useState(false);
+  // 수업 종류 '개인일정': 장소·시간 없이 그날 수업이 없다는 공지만 올린다.
+  const isPersonal = classType === PERSONAL_SCHEDULE;
+  const makeAutoTitle = () =>
+    isPersonal
+      ? [author.trim(), PERSONAL_SCHEDULE].filter(Boolean).join('/')
+      : buildAutoTitle(author, location, session, hour, deepTankUsage, isAllDay);
 
   useEffect(() => {
     if (editingEvent) {
@@ -137,23 +143,22 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
   // 메모가 비어 있거나 자동 문구일 때만 바꾸고, 직접 쓴 메모는 건드리지 않는다.
   // 시간표가 없는 풀장(성남, 수원)이나 하루 종일이면 자동 문구만 지운다.
   useEffect(() => {
-    const autoMemo = isAllDay ? null : buildEntryMemo(location, session, deepTankUsage, date);
+    const autoMemo = isAllDay || isPersonal ? null : buildEntryMemo(location, session, deepTankUsage, date);
     setDescription((prev) => (isAutoEntryMemo(prev) ? autoMemo ?? '' : prev));
-  }, [location, session, deepTankUsage, date, isAllDay]);
+  }, [location, session, deepTankUsage, date, isAllDay, isPersonal]);
 
   // 작성자/장소/시간/딥탱크 이용시간 변경 시 제목 자동 연결 ("작성자명/장소/시간/전반/빠입")
   useEffect(() => {
     if (!editingEvent && !isTitleUserModified) {
-      const autoTitle = buildAutoTitle(author, location, session, hour, deepTankUsage, isAllDay);
-      setTitle(autoTitle);
+      setTitle(makeAutoTitle());
     }
-  }, [author, location, session, hour, deepTankUsage, isAllDay, isTitleUserModified, editingEvent]);
+  }, [author, location, session, hour, deepTankUsage, isAllDay, isPersonal, isTitleUserModified, editingEvent]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // 제목 칸이 숨겨져 있을 때(프다갤 미노출) 비어 있으면 자동 제목을 쓴다.
     const finalTitle = title.trim()
-      || (crossPost ? '' : buildAutoTitle(author, location, session, hour, deepTankUsage, isAllDay));
+      || (crossPost ? '' : makeAutoTitle());
     if (!finalTitle || !date) { alert('일정 제목과 날짜는 필수입니다.'); return; }
     if (endDate && endDate < date) {
       alert('종료 날짜는 시작 날짜보다 빠를 수 없습니다.');
@@ -167,11 +172,11 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
     // DB의 참석자 행은 App.handleSaveEvent가 한 행씩 맞춘다.
     const baseList = editingEvent ? getAttendeesList(editingEvent.attendees) : [AUTHOR_NAME];
     const withoutMarker = baseList.filter((n) => n !== CROSS_POST_ATTENDEE);
-    const nextList = crossPost ? [...withoutMarker, CROSS_POST_ATTENDEE] : withoutMarker;
+    const nextList = crossPost && !isPersonal ? [...withoutMarker, CROSS_POST_ATTENDEE] : withoutMarker;
     const combinedAttendees: string | null = nextList.length > 0 ? nextList.join(', ') : null;
 
     let finalStartTime: string | null = null;
-    if (!isAllDay) {
+    if (!isAllDay && !isPersonal) {
       if (location === '딥스') {
         finalStartTime = session;
       } else {
@@ -188,10 +193,10 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
       endDate: endDate && endDate !== date ? endDate : null,
       startTime: finalStartTime,
       endTime: editingEvent ? editingEvent.endTime : null,
-      deepTankUsage: location === '딥스' ? (deepTankUsage || null) : null,
+      deepTankUsage: location === '딥스' && !isPersonal ? (deepTankUsage || null) : null,
       description: description.trim() || null,
-      location,
-      classType: location === '자유일정' ? null : classType,
+      location: isPersonal ? PERSONAL_SCHEDULE : location,
+      classType: location === '자유일정' && !isPersonal ? null : classType,
       attendees: combinedAttendees,
     });
   };
@@ -227,7 +232,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
             <div className="space-y-2">
               <label className={labelCls}>
                 <Calendar className="w-4 h-4" strokeWidth={1.75} />
-                {location === '자유일정' ? '시작 날짜' : '날짜'}
+                {location === '자유일정' || isPersonal ? '시작 날짜' : '날짜'}
               </label>
               <input
                 type="date"
@@ -235,7 +240,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
                 value={date}
                 onChange={(e) => {
                   setDate(e.target.value);
-                  if (location !== '자유일정' || !endDate || endDate < e.target.value) {
+                  if ((location !== '자유일정' && !isPersonal) || !endDate || endDate < e.target.value) {
                     setEndDate(e.target.value);
                   }
                 }}
@@ -243,7 +248,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
               />
             </div>
 
-            {location === '자유일정' && (
+            {(location === '자유일정' || isPersonal) && (
               <div className="space-y-2 animate-fade-up">
                 <label className={labelCls}>
                   <Calendar className="w-4 h-4" strokeWidth={1.75} />종료 날짜
@@ -271,7 +276,15 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setClassType(type)}
+                    onClick={() => {
+                      setClassType(type);
+                      if (type === PERSONAL_SCHEDULE) {
+                        setCrossPost(false);
+                        setDeepTankUsage(null);
+                      } else if (isPersonal) {
+                        setEndDate(date); // 개인일정에서 수업으로 바꾸면 하루짜리로 되돌린다
+                      }
+                    }}
                     aria-pressed={classType === type}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-full transition cursor-pointer press
                       ${classType === type
@@ -286,7 +299,8 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
             </div>
           )}
 
-          {/* 3. Location */}
+          {/* 3. Location (개인일정은 장소 없음) */}
+          {!isPersonal && (
           <div className="space-y-2">
             <label className={labelCls}>
               <MapPin className="w-4 h-4" strokeWidth={1.75} />장소
@@ -332,8 +346,10 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
             </div>
           </div>
 
-          {/* 4. Time Selection */}
-          {!isAllDay && (
+          )}
+
+          {/* 4. Time Selection (개인일정은 시간 없음) */}
+          {!isAllDay && !isPersonal && (
             <div className="space-y-4">
               <div className="space-y-2">
                 {location === '딥스' ? (
@@ -407,7 +423,7 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
           )}
 
           {/* All Day Toggle (자유일정은 항상 하루 종일이라 토글 자체를 숨김) */}
-          {location !== '자유일정' && (
+          {location !== '자유일정' && !isPersonal && (
             <div className="flex items-center justify-between py-3.5 px-5 bg-white rounded-full border border-line">
               <span className="text-[15px] text-ink flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted" strokeWidth={1.75} />
@@ -428,7 +444,8 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
             </div>
           )}
 
-          {/* 5. 프다갤에도 올리기 (체크 시에만 제목 입력칸 노출) */}
+          {/* 5. 프다갤에도 올리기 (체크 시에만 제목 입력칸 노출, 개인일정은 올리지 않음) */}
+          {!isPersonal && (
           <label className="flex items-center gap-3 py-3.5 px-5 bg-white rounded-full border border-line cursor-pointer">
             <input
               type="checkbox"
@@ -438,9 +455,10 @@ export default function EventForm({ selectedDate, editingEvent, onSave, onCancel
             />
             <span className="text-[15px] text-ink">프다갤에도 올리기</span>
           </label>
+          )}
 
           {/* 6. Title (프다갤에 노출될 때만 보여준다) */}
-          {crossPost && (
+          {crossPost && !isPersonal && (
           <div className="space-y-2 animate-fade-up">
             <div className="flex items-center justify-between">
               <label className={labelCls}>

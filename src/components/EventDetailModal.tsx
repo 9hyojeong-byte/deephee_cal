@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, MapPin, AlignLeft, Users, UserPlus, Sparkles, Link, Waves, MessageSquare } from 'lucide-react';
-import { ScheduleEvent } from '../types';
+import { ScheduleEvent, PERSONAL_SCHEDULE } from '../types';
 import { getAttendeesList, getParticipantsList } from '../lib/authors';
 import { linkifyText } from '../lib/linkify';
 import { getLocationTone } from '../lib/locationColors';
 import { CLASS_TYPE_TONES } from '../lib/classTypes';
-import { SHARE_LABEL } from '../lib/appConfig';
+import { SHARE_LABEL, SHOW_SHARED_MEMO } from '../lib/appConfig';
 import { formatKoreanDate, getEventTimeLabel } from '../lib/eventLabel';
 
 interface EventDetailModalProps {
@@ -36,6 +36,7 @@ export default function EventDetailModal({ event, isAdminMode, onClose, onAddAtt
   // 작성자는 화면·공유 문구에 드러내지 않고, 실제 참석자만 보여준다.
   const attendees = getAttendeesList(event.attendees);
   const participants = getParticipantsList(event.attendees);
+  const isPersonal = event.classType === PERSONAL_SCHEDULE;
   const tone = getLocationTone(event.location);
   const dateLabel = event.endDate
     ? `${formatKoreanDate(event.date, true)} ~ ${formatKoreanDate(event.endDate, true)}`
@@ -187,7 +188,8 @@ ${event.classType ? `• 수업: ${event.classType}\n` : ''}• 메모: ${event.
             </div>
           )}
 
-          {/* Shared Memo - 비밀번호 없이 누구나 쓰는 메모 */}
+          {/* Shared Memo - 비밀번호 없이 누구나 쓰는 메모 (SHOW_SHARED_MEMO가 false면 숨김) */}
+          {SHOW_SHARED_MEMO && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className={sectionLabel}>
@@ -242,7 +244,11 @@ ${event.classType ? `• 수업: ${event.classType}\n` : ''}• 메모: ${event.
               </div>
             )}
           </div>
+          )}
 
+          {/* 개인일정은 참석자를 받지 않으므로 참석자 목록·참석 등록을 숨긴다 */}
+          {!isPersonal && (
+          <>
           {/* Attendees */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -322,6 +328,8 @@ ${event.classType ? `• 수업: ${event.classType}\n` : ''}• 메모: ${event.
               </button>
             )}
           </div>
+          </>
+          )}
         </div>
 
         {/* Footer */}

@@ -17,6 +17,9 @@ export const CROSS_POST_ATTENDEE = '깍뚜기벙';
 // 제목 옆 "문의하기" 버튼이 여는 카카오톡 오픈채팅 주소
 export const CONTACT_URL = 'http://qr.kakao.com/talk/MkzXW0EF7tz54cp1Wyj7wtYyZA4-';
 
+// 일정 상세 화면의 "공유 메모"(누구나 작성 가능) 영역을 보여줄지. 희선캘린더는 쓰지 않아 숨긴다.
+export const SHOW_SHARED_MEMO = false;
+
 // 공유 텍스트 머리말: "📅 [희선캘린더]"
 export const SHARE_LABEL = APP_NAME;
 

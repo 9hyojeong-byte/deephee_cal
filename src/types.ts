@@ -1,5 +1,9 @@
 // 수업 종류. DB schedules.class_type 컬럼에 그대로 저장된다.
-export const CLASS_TYPES = ['머메이드', '프리다이빙', '연습'] as const;
+export const CLASS_TYPES = ['머메이드', '프리다이빙', '연습', '개인일정'] as const;
+
+// '개인일정': 희선강사 개인 사정으로 그날 수업이 없다는 공지. 장소·시간 없이 저장하고,
+// DB location 칸에도 이 값을 넣는다 (location은 비울 수 없는 칸).
+export const PERSONAL_SCHEDULE = '개인일정';
 export type ClassType = typeof CLASS_TYPES[number];
 
 export interface ScheduleEvent {
@@ -12,7 +16,7 @@ export interface ScheduleEvent {
   description: string | null;
   createdAt: string;
   location?: string | null; // Location (딥스, 성남, 파라, 수원, 자유일정)
-  classType?: ClassType | null; // 수업 종류: 머메이드 / 프리다이빙 / 연습 (자유일정은 null)
+  classType?: ClassType | null; // 수업 종류: 머메이드 / 프리다이빙 / 연습 / 개인일정 (자유일정은 null)
   attendees?: string | null; // Comma-separated or similar string of attendee names
   deepTankUsage?: string | null; // 딥탱크 이용시간: "전반부이", "후반부이" 등
   sharedMemo?: string | null; // 비밀번호 없이 누구나 쓸 수 있는 공유 메모

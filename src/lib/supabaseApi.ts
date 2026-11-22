@@ -23,7 +23,7 @@ interface ScheduleRow {
   created_at: string;
   shared_memo: string | null;
   shared_memo_version: number;
-  schedule_attendees?: { nickname: string }[] | null;
+  schedule_attendees?: { nickname: string; is_paid?: boolean | null }[] | null;
 }
 
 function rowToEvent(row: ScheduleRow): ScheduleEvent {
@@ -40,6 +40,7 @@ function rowToEvent(row: ScheduleRow): ScheduleEvent {
     location: row.location,
     classType: (CLASS_TYPES as readonly string[]).includes(row.class_type ?? '') ? (row.class_type as ClassType) : null,
     attendees: nicknames.length > 0 ? nicknames.join(', ') : null,
+    paidAttendees: (row.schedule_attendees ?? []).filter((a) => a.is_paid).map((a) => a.nickname),
     deepTankUsage: row.deep_tank_usage,
     sharedMemo: row.shared_memo,
     sharedMemoVersion: row.shared_memo_version,
@@ -70,7 +71,7 @@ function eventToRow(event: ScheduleEvent) {
 export async function fetchSchedules(): Promise<ScheduleEvent[]> {
   const { data, error } = await supabase
     .from(SCHEDULES_TABLE)
-    .select(`*, ${ATTENDEES_TABLE}(nickname)`)
+    .select(`*, ${ATTENDEES_TABLE}(nickname, is_paid)`)
     .eq('company', COMPANY_CODE)
     .is('deleted_at', null)
     .order('start_date', { ascending: true })
@@ -169,6 +170,22 @@ export async function removeAttendee(scheduleId: string, nickname: string): Prom
   }
 }
 
+/** 참석자 한 명의 입금완료 여부만 바꾼다. 같은 일정의 다른 참석자는 건드리지 않는다. */
+export async function setAttendeePaid(
+  scheduleId: string,
+  nickname: string,
+  isPaid: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from(ATTENDEES_TABLE)
+    .update({ is_paid: isPaid })
+    .eq('schedule_id', scheduleId)
+    .eq('nickname', nickname);
+  if (error) {
+    throw new Error(`입금 표시 저장에 실패했습니다: ${error.message}`);
+  }
+}
+
 export type UpdateSharedMemoResult =
   | { ok: true; newVersion: number }
   | { ok: false; latestMemo: string | null; latestVersion: number };
@@ -230,4 +247,32 @@ export async function renameAttendee(
   if (error) {
     throw new Error(`작성자 이름 변경에 실패했습니다: ${error.message}`);
   }
+}
+
+// ── 공지사항 및 사용방법 ──
+// app_notices 테이블: 업체(company)마다 한 행. 관리자가 앱에서 직접 작성·수정한다.
+const NOTICES_TABLE = 'app_notices';
+
+export interface AppNotice {
+  content: string;
+  updatedAt: string | null;
+}
+
+export async function fetchNotice(): Promise<AppNotice> {
+  const { data, error } = await supabase
+    .from(NOTICES_TABLE)
+    .select('content, updated_at')
+    .eq('company', COMPANY_CODE)
+    .maybeSingle();
+  if (error) throw error;
+  return { content: data?.content ?? '', updatedAt: data?.updated_at ?? null };
+}
+
+export async function saveNotice(content: string): Promise<AppNotice> {
+  const updatedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from(NOTICES_TABLE)
+    .upsert({ company: COMPANY_CODE, content, updated_at: updatedAt }, { onConflict: 'company' });
+  if (error) throw error;
+  return { content, updatedAt };
 }

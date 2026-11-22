@@ -18,6 +18,7 @@ export interface ScheduleEvent {
   location?: string | null; // Location (딥스, 성남, 파라, 수원, 자유일정)
   classType?: ClassType | null; // 수업 종류: 머메이드 / 프리다이빙 / 연습 / 개인일정 (자유일정은 null)
   attendees?: string | null; // Comma-separated or similar string of attendee names
+  paidAttendees?: string[]; // 입금완료 표시한 참석자 이름들 (schedule_attendees.is_paid)
   deepTankUsage?: string | null; // 딥탱크 이용시간: "전반부이", "후반부이" 등
   sharedMemo?: string | null; // 비밀번호 없이 누구나 쓸 수 있는 공유 메모
   sharedMemoVersion?: number; // 공유 메모 낙관적 동시성 제어용 버전 번호

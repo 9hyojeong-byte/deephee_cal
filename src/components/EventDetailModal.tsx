@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, MapPin, AlignLeft, Users, UserPlus, Sparkles, Link, Waves, MessageSquare } from 'lucide-react';
+import { X, Clock, MapPin, AlignLeft, Users, UserPlus, Sparkles, Link, Waves, MessageSquare, Check, Wallet, UserMinus } from 'lucide-react';
 import { ScheduleEvent, PERSONAL_SCHEDULE } from '../types';
 import { getAttendeesList, getParticipantsList } from '../lib/authors';
 import { linkifyText } from '../lib/linkify';
@@ -14,6 +14,7 @@ interface EventDetailModalProps {
   onClose: () => void;
   onAddAttendee: (nickname: string, password?: string) => void;
   onRemoveAttendee: (nickname: string) => void;
+  onSetAttendeePaid: (nickname: string, isPaid: boolean) => void;
   onUpdateSharedMemo: (newMemo: string, baseVersion: number) => Promise<'saved' | 'conflict' | 'error'>;
 }
 
@@ -22,12 +23,14 @@ const pill = 'flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm';
 const softInput =
   'w-full px-5 py-3 border border-line bg-white rounded-full text-sm text-ink input-soft placeholder:text-muted/60';
 
-export default function EventDetailModal({ event, isAdminMode, onClose, onAddAttendee, onRemoveAttendee, onUpdateSharedMemo }: EventDetailModalProps) {
+export default function EventDetailModal({ event, isAdminMode, onClose, onAddAttendee, onRemoveAttendee, onSetAttendeePaid, onUpdateSharedMemo }: EventDetailModalProps) {
   const [newName, setNewName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [savedMyName, setSavedMyName] = useState('');
   const [savedMyPassword, setSavedMyPassword] = useState('');
   const [showToast, setShowToast] = useState(false);
+  // 참석자 이름을 누르면 뜨는 작은 팝업(입금완료 / 참석취소)의 대상
+  const [actionTarget, setActionTarget] = useState<string | null>(null);
   const [isEditingMemo, setIsEditingMemo] = useState(false);
   const [memoDraft, setMemoDraft] = useState('');
   const [memoBaseVersion, setMemoBaseVersion] = useState(0);
@@ -36,6 +39,7 @@ export default function EventDetailModal({ event, isAdminMode, onClose, onAddAtt
   // 작성자는 화면·공유 문구에 드러내지 않고, 실제 참석자만 보여준다.
   const attendees = getAttendeesList(event.attendees);
   const participants = getParticipantsList(event.attendees);
+  const paidSet = new Set(event.paidAttendees ?? []);
   const isPersonal = event.classType === PERSONAL_SCHEDULE;
   const tone = getLocationTone(event.location);
   const dateLabel = event.endDate
@@ -96,7 +100,13 @@ ${event.classType ? `• 수업: ${event.classType}\n` : ''}• 메모: ${event.
       ? `[관리자] "${name}" 님을 참석자에서 제외할까요?`
       : `"${name}" 님을 참석자에서 제외하시겠습니까?`;
     if (!window.confirm(message)) return;
+    setActionTarget(null);
     onRemoveAttendee(name);
+  };
+
+  const handleTogglePaid = (name: string) => {
+    setActionTarget(null);
+    onSetAttendeePaid(name, !paidSet.has(name));
   };
 
   const handleStartEditMemo = () => {
@@ -267,17 +277,25 @@ ${event.classType ? `• 수업: ${event.classType}\n` : ''}• 메모: ${event.
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5 bg-white p-4 rounded-[2rem] shadow-soft">
-                {participants.map((name) => (
-                  <button
-                    key={name}
-                    onClick={() => handleRemoveAttendee(name)}
-                    className={`${pill} bg-lavender text-lavender-deep transition group cursor-pointer hover:bg-peach/40 hover:text-peach-deep`}
-                    title="참석 취소"
-                  >
-                    <span>{name}</span>
-                    <X className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 transition" strokeWidth={2} />
-                  </button>
-                ))}
+                {participants.map((name) => {
+                  const isPaid = paidSet.has(name);
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setActionTarget(name)}
+                      className={`${pill} bg-lavender text-lavender-deep transition cursor-pointer hover:bg-lavender/60`}
+                      title={isPaid ? '입금완료 · 눌러서 관리' : '눌러서 입금완료 / 참석취소'}
+                    >
+                      <span>{name}</span>
+                      {isPaid && (
+                        <span className="w-4 h-4 rounded-full bg-sage-deep text-white inline-flex items-center justify-center" aria-label="입금완료">
+                          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -341,6 +359,55 @@ ${event.classType ? `• 수업: ${event.classType}\n` : ''}• 메모: ${event.
             확인
           </button>
         </div>
+
+        {/* 참석자 이름을 눌렀을 때 뜨는 작은 팝업 */}
+        {actionTarget && (
+          <div
+            className="absolute inset-0 z-[55] bg-ink/20 backdrop-blur-[2px] flex items-center justify-center p-6 animate-fade-up"
+            onClick={() => setActionTarget(null)}
+          >
+            <div
+              className="bg-paper w-full max-w-[280px] rounded-[2rem] shadow-soft-lg p-5 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[17px] font-semibold text-ink flex items-center gap-1.5">
+                  {actionTarget}
+                  {paidSet.has(actionTarget) && (
+                    <span className="text-xs font-medium text-sage-deep bg-sage px-2 py-0.5 rounded-full">입금완료</span>
+                  )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActionTarget(null)}
+                  className="w-8 h-8 rounded-full bg-white shadow-soft flex items-center justify-center press cursor-pointer"
+                  aria-label="닫기"
+                >
+                  <X className="w-3.5 h-3.5 text-ink" strokeWidth={2} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleTogglePaid(actionTarget)}
+                  className="w-full py-3 rounded-full bg-ink text-paper text-sm font-medium flex items-center justify-center gap-1.5 press cursor-pointer"
+                >
+                  <Wallet className="w-4 h-4" strokeWidth={1.75} />
+                  {paidSet.has(actionTarget) ? '입금완료 취소' : '입금완료'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveAttendee(actionTarget)}
+                  className="w-full py-3 rounded-full bg-white text-peach-deep text-sm font-medium shadow-soft flex items-center justify-center gap-1.5 press cursor-pointer"
+                >
+                  <UserMinus className="w-4 h-4" strokeWidth={1.75} />
+                  참석취소
+                </button>
+              </div>
+              <p className="text-xs text-muted text-center">참석 등록 때 정한 비밀번호를 확인해요</p>
+            </div>
+          </div>
+        )}
 
         {/* Copy Link Toast Notification */}
         {showToast && (

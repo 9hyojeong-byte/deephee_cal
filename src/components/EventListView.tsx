@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, Trash2, Plus, MoreHorizontal, CalendarDays, Link } from 'lucide-react';
+import { Edit2, Trash2, Plus, MoreHorizontal, CalendarDays, Link, Check } from 'lucide-react';
 import { ScheduleEvent, PERSONAL_SCHEDULE } from '../types';
 import { isPastDate } from '../lib/timeUtils';
 import { getParticipantsList } from '../lib/authors';
@@ -135,8 +135,13 @@ ${ev.classType ? `• 수업: ${ev.classType}\n` : ''}• 메모: ${ev.descripti
             {participants.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {participants.map((name) => (
-                  <span key={name} className="text-[11px] px-2.5 py-0.5 rounded-full bg-lavender text-lavender-deep">
+                  <span key={name} className="text-[11px] px-2.5 py-0.5 rounded-full bg-lavender text-lavender-deep inline-flex items-center gap-1">
                     {name}
+                    {ev.paidAttendees?.includes(name) && (
+                      <span className="w-3 h-3 rounded-full bg-sage-deep text-white inline-flex items-center justify-center" aria-label="입금완료">
+                        <Check className="w-2 h-2" strokeWidth={3.5} />
+                      </span>
+                    )}
                   </span>
                 ))}
               </div>

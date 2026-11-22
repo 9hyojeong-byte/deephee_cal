@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, X, Download, RefreshCw, KeyRound } from 'lucide-react';
+import { Plus, X, Download, RefreshCw, KeyRound, Megaphone } from 'lucide-react';
 import { ScheduleEvent } from './types';
 import CalendarView from './components/CalendarView';
 import EventListView from './components/EventListView';
 import EventForm from './components/EventForm';
 import EventDetailModal from './components/EventDetailModal';
+import NoticeModal from './components/NoticeModal';
 import {
   fetchSchedules,
   saveSingleEvent,
@@ -13,6 +14,7 @@ import {
   renameAttendee,
   getAttendeePasswordHash,
   updateSharedMemo,
+  setAttendeePaid,
 } from './lib/supabaseApi';
 import { getAuthorName, isCrossPosted } from './lib/authors';
 import { hashPassword } from './lib/passwordHash';
@@ -52,6 +54,7 @@ export default function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null);
   const [selectedEventForDetail, setSelectedEventForDetail] = useState<ScheduleEvent | null>(null);
+  const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
 
@@ -336,7 +339,11 @@ export default function App() {
     const target = events.find(e => String(e.id) === String(eventId));
     if (!target) return;
     const attendeesList = target.attendees ? target.attendees.split(',').map(n => n.trim()).filter(Boolean) : [];
-    const updatedEvent = { ...target, attendees: attendeesList.filter(n => n !== nickname).join(', ') || null };
+    const updatedEvent = {
+      ...target,
+      attendees: attendeesList.filter(n => n !== nickname).join(', ') || null,
+      paidAttendees: (target.paidAttendees ?? []).filter(n => n !== nickname),
+    };
     setEvents(events.map(e => String(e.id) === String(eventId) ? updatedEvent : e));
     if (selectedEventForDetail && String(selectedEventForDetail.id) === String(eventId)) setSelectedEventForDetail(updatedEvent);
 
@@ -346,6 +353,29 @@ export default function App() {
       setSyncStatus('success');
     } catch (err) {
       console.error('Failed to remove attendee:', err);
+      setSyncStatus('error');
+    }
+  };
+
+  // 참석자 본인이 입금완료 표시를 켜고 끈다. 참석 취소와 같은 비밀번호 확인을 거친다.
+  const handleSetAttendeePaid = async (eventId: string, nickname: string, isPaid: boolean) => {
+    const passed = await verifyAttendeePassword(eventId, nickname);
+    if (!passed) return;
+
+    const target = events.find(e => String(e.id) === String(eventId));
+    if (!target) return;
+    const others = (target.paidAttendees ?? []).filter(n => n !== nickname);
+    const updatedEvent = { ...target, paidAttendees: isPaid ? [...others, nickname] : others };
+    setEvents(events.map(e => String(e.id) === String(eventId) ? updatedEvent : e));
+    if (selectedEventForDetail && String(selectedEventForDetail.id) === String(eventId)) setSelectedEventForDetail(updatedEvent);
+
+    setSyncStatus('syncing');
+    try {
+      await setAttendeePaid(eventId, nickname, isPaid);
+      setSyncStatus('success');
+      setToastMessage(isPaid ? `"${nickname}" 님 입금완료로 표시했어요.` : `"${nickname}" 님 입금완료 표시를 취소했어요.`);
+    } catch (err) {
+      console.error('Failed to set attendee paid:', err);
       setSyncStatus('error');
     }
   };
@@ -507,23 +537,24 @@ export default function App() {
             </span>
           </h1>
 
-          {/* 평소엔 상태 표시를 숨기고, 불러오기 실패·관리자 모드일 때만 보여준다 */}
-          {(syncStatus === 'error' || isAdminMode) && (
+          {/* 공지사항 버튼은 항상 보이고, 연결 오류는 불러오기 실패일 때만 보여준다.
+              관리자 모드는 우측 상단 열쇠 아이콘 색으로만 표시한다. */}
           <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsNoticeOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-peach/50 text-ink press cursor-pointer hover:bg-peach/70"
+            >
+              <Megaphone className="w-3 h-3" strokeWidth={2} />
+              공지사항 및 사용방법
+            </button>
             {syncStatus === 'error' && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-peach/40 text-peach-deep">
                 <span className="w-1.5 h-1.5 rounded-full bg-peach-deep" />
                 연결 오류
               </span>
             )}
-            {isAdminMode && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-peach/50 text-ink animate-fade-up">
-                <KeyRound className="w-3 h-3" strokeWidth={2} />
-                관리자 모드
-              </span>
-            )}
           </div>
-          )}
 
         </header>
 
@@ -583,8 +614,14 @@ export default function App() {
             onClose={handleCloseEventDetail}
             onAddAttendee={(nickname, password) => handleAddAttendeeToEvent(selectedEventForDetail.id, nickname, password)}
             onRemoveAttendee={(nickname) => handleRemoveAttendeeFromEvent(selectedEventForDetail.id, nickname)}
+            onSetAttendeePaid={(nickname, isPaid) => handleSetAttendeePaid(selectedEventForDetail.id, nickname, isPaid)}
             onUpdateSharedMemo={(newMemo, baseVersion) => handleUpdateSharedMemo(selectedEventForDetail.id, newMemo, baseVersion)}
           />
+        )}
+
+        {/* ── 공지사항 및 사용방법 ── */}
+        {isNoticeOpen && (
+          <NoticeModal isAdminMode={isAdminMode} onClose={() => setIsNoticeOpen(false)} />
         )}
 
         {/* ── Sync Loading Overlay ── */}
